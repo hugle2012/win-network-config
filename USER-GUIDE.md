@@ -8,6 +8,7 @@ This tool is a comprehensive Windows network optimization and configuration mana
 2. **Execute the script**: Navigate to the script directory and run `.\install.ps1`
 3. **Choose your option**: Use the numbered menu to select desired operations
 
+OR if you don't want to download the source code itself, you can directly run this 1-line command in PS with admin privilege:
 ```powershell
 # Run as Administrator in PowerShell
 irm https://raw.githubusercontent.com/hugle2012/win-network-config/main/install.ps1 | iex
