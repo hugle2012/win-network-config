@@ -52,6 +52,10 @@ The tool provides an interactive menu with 14+ options:
 
 This tool is for legitimate network configuration purposes only. Users are responsible for compliance with local laws and network policies.
 
+## User Guide
+
+For detailed instructions and use cases, see [USER-GUIDE.md](USER-GUIDE.md).
+
 ## Disclaimer
 
 Use at your own risk. Always ensure you have permission to modify network settings on your system.

@@ -10,7 +10,7 @@ function Test-Administrator {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
+# Flush DNS cache
 
 # Get current network configuration
 function Get-NetworkConfig {
@@ -67,14 +67,71 @@ function Set-DNSServers {
         }
         Write-Host "DNS set to $Name ($Primary, $Secondary)" -ForegroundColor Green
         
-        # Flush DNS cache after changing
-        Clear-DNSCache
-        
-        if ($Persistent) {
-            Write-Host "Configuration will persist after reboot" -ForegroundColor Yellow
+        # Save persistent settings if enabled
+        if ($global:PersistentMode) {
+            Save-PersistentSettings -DNSPrimary $Primary -DNSSecondary $Secondary -DNSName $Name
+            Write-Host "Configuration saved - will persist after reboot" -ForegroundColor Yellow
         } else {
-            Write-Host "Configuration is temporary (reset on reboot)" -ForegroundColor Yellow
+            Write-Host "Configuration is temporary (will reset on reboot)" -ForegroundColor Yellow
         }
+        
+        # Save persistent settings
+function Save-PersistentSettings {
+    param(
+        [string]$DNSPrimary,
+        [string]$DNSSecondary,
+        [string]$DNSName
+    )
+    
+    try {
+        $regPath = "HKCU:\Software\NetworkConfigTool"
+        if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force | Out-Null
+        }
+        
+        Set-ItemProperty -Path $regPath -Name "DNSPrimary" -Value $DNSPrimary
+        Set-ItemProperty -Path $regPath -Name "DNSSecondary" -Value $DNSSecondary
+        Set-ItemProperty -Path $regPath -Name "DNSName" -Value $DNSName
+        Set-ItemProperty -Path $regPath -Name "PersistentMode" -Value $true
+    } catch {
+        Write-Host "Warning: Could not save persistent settings: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
+# Load persistent settings on startup
+function Load-PersistentSettings {
+    try {
+        $regPath = "HKCU:\Software\NetworkConfigTool"
+        if (Test-Path $regPath) {
+            $persistentMode = Get-ItemProperty -Path $regPath -Name "PersistentMode" -ErrorAction SilentlyContinue
+            if ($persistentMode.PersistentMode) {
+                $primary = (Get-ItemProperty -Path $regPath -Name "DNSPrimary" -ErrorAction SilentlyContinue).DNSPrimary
+                $secondary = (Get-ItemProperty -Path $regPath -Name "DNSSecondary" -ErrorAction SilentlyContinue).DNSSecondary
+                $name = (Get-ItemProperty -Path $regPath -Name "DNSName" -ErrorAction SilentlyContinue).DNSName
+                
+                if ($primary -and $secondary) {
+                    Write-Host "Applying persistent DNS settings: $name" -ForegroundColor Yellow
+                    Set-DNSServers -Primary $primary -Secondary $secondary -Name $name
+                }
+            }
+        }
+    } catch {
+        Write-Host "Warning: Could not load persistent settings" -ForegroundColor Yellow
+    }
+}
+
+# Clear persistent settings
+function Clear-PersistentSettings {
+    try {
+        $regPath = "HKCU:\Software\NetworkConfigTool"
+        if (Test-Path $regPath) {
+            Remove-Item -Path $regPath -Recurse -Force
+        }
+    } catch {
+        Write-Host "Warning: Could not clear persistent settings" -ForegroundColor Yellow
+    }
+} after changing
+        Clear-DNSCache
     } catch {
         Write-Host "Error setting DNS: $($_.Exception.Message)" -ForegroundColor Red
     }
@@ -340,6 +397,11 @@ $global:PersistentMode = $Persistent
 Write-Host "Advanced Network Configuration Tool loaded successfully!" -ForegroundColor Green
 Write-Host "Administrator privileges: OK" -ForegroundColor Green
 
+# Load persistent settings if they exist
+if (-not $Persistent) {
+    Load-PersistentSettings
+}
+
 do {
     Show-Menu
     $choice = Read-Host "Select an option"
@@ -395,20 +457,25 @@ do {
         "13" {
             Reset-DNS
             Disable-DoH
+            Clear-PersistentSettings
             Read-Host "`nPress Enter to continue"
         }
         "14" {
             $global:PersistentMode = -not $global:PersistentMode
-            $Persistent = $global:PersistentMode
             Write-Host "Persistent mode: $($global:PersistentMode)" -ForegroundColor Yellow
+            if (-not $global:PersistentMode) {
+                Clear-PersistentSettings
+                Write-Host "Persistent settings cleared" -ForegroundColor Green
+            }
             Read-Host "`nPress Enter to continue"
         }
         "0" {
-            if (-not $Persistent) {
+            if (-not $global:PersistentMode) {
                 $reset = Read-Host "Reset all settings to default before exit? (y/N)"
                 if ($reset -eq "y" -or $reset -eq "Y") {
                     Reset-DNS
                     Disable-DoH
+                    Clear-PersistentSettings
                     Write-Host "Settings reset to default" -ForegroundColor Green
                 }
             }
