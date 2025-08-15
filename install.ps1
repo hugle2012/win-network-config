@@ -10,7 +10,7 @@ function Test-Administrator {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-# Flush DNS cache
+}
 
 # Get current network configuration
 function Get-NetworkConfig {
@@ -75,7 +75,14 @@ function Set-DNSServers {
             Write-Host "Configuration is temporary (will reset on reboot)" -ForegroundColor Yellow
         }
         
-        # Save persistent settings
+        # Flush DNS cache after changing
+        Clear-DNSCache
+    } catch {
+        Write-Host "Error setting DNS: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Save persistent settings
 function Save-PersistentSettings {
     param(
         [string]$DNSPrimary,
@@ -99,7 +106,7 @@ function Save-PersistentSettings {
 }
 
 # Load persistent settings on startup
-function Load-PersistentSettings {
+function Import-PersistentSettings {
     try {
         $regPath = "HKCU:\Software\NetworkConfigTool"
         if (Test-Path $regPath) {
@@ -129,11 +136,6 @@ function Clear-PersistentSettings {
         }
     } catch {
         Write-Host "Warning: Could not clear persistent settings" -ForegroundColor Yellow
-    }
-} after changing
-        Clear-DNSCache
-    } catch {
-        Write-Host "Error setting DNS: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
@@ -230,7 +232,7 @@ function Reset-NetworkOptimizations {
 }
 
 # Manage hosts file
-function Manage-HostsFile {
+function Edit-HostsFile {
     $hostsPath = "$env:SystemRoot\System32\drivers\etc\hosts"
     
     do {
@@ -323,7 +325,7 @@ function Reset-DNS {
 }
 
 # Advanced network diagnostics
-function Run-NetworkDiagnostics {
+function Test-NetworkDiagnostics {
     Write-Host "`n=== Network Diagnostics ===" -ForegroundColor Green
     
     # Test connectivity
@@ -399,7 +401,7 @@ Write-Host "Administrator privileges: OK" -ForegroundColor Green
 
 # Load persistent settings if they exist
 if (-not $Persistent) {
-    Load-PersistentSettings
+    Import-PersistentSettings
 }
 
 do {
@@ -448,10 +450,10 @@ do {
             Read-Host "`nPress Enter to continue"
         }
         "11" {
-            Manage-HostsFile
+            Edit-HostsFile
         }
         "12" {
-            Run-NetworkDiagnostics
+            Test-NetworkDiagnostics
             Read-Host "`nPress Enter to continue"
         }
         "13" {
