@@ -150,6 +150,158 @@ function Clear-DNSCache {
     }
 }
 
+# Clear browser cache for common browsers
+function Clear-BrowserCache {
+    Write-Host "`n=== Browser Cache Management ===" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "1. Chrome/Chromium"
+    Write-Host "2. Firefox"
+    Write-Host "3. Edge"
+    Write-Host "4. Brave"
+    Write-Host "5. Opera"
+    Write-Host "6. All browsers"
+    Write-Host "0. Back to main menu"
+    Write-Host ""
+    
+    $choice = Read-Host "Select browser to clear cache"
+    
+    switch ($choice) {
+        "1" { Clear-ChromeCache }
+        "2" { Clear-FirefoxCache }
+        "3" { Clear-EdgeCache }
+        "4" { Clear-BraveCache }
+        "5" { Clear-OperaCache }
+        "6" { Clear-AllBrowserCache }
+        "0" { return }
+        default { 
+            Write-Host "Invalid option" -ForegroundColor Red
+            Start-Sleep 2
+        }
+    }
+}
+
+# Clear Chrome/Chromium cache
+function Clear-ChromeCache {
+    try {
+        $chromePaths = @(
+            "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Cache",
+            "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Code Cache",
+            "$env:LOCALAPPDATA\Chromium\User Data\Default\Cache",
+            "$env:LOCALAPPDATA\Chromium\User Data\Default\Code Cache"
+        )
+        
+        foreach ($path in $chromePaths) {
+            if (Test-Path $path) {
+                Remove-Item -Path "$path\*" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "Chrome/Chromium cache cleared: $path" -ForegroundColor Green
+            }
+        }
+        Write-Host "Chrome/Chromium cache cleared successfully" -ForegroundColor Green
+    } catch {
+        Write-Host "Error clearing Chrome cache: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Clear Firefox cache
+function Clear-FirefoxCache {
+    try {
+        $firefoxPaths = @(
+            "$env:LOCALAPPDATA\Mozilla\Firefox\Profiles"
+        )
+        
+        foreach ($profilePath in $firefoxPaths) {
+            if (Test-Path $profilePath) {
+                $profiles = Get-ChildItem $profilePath -Directory | Where-Object { $_.Name -match ".*\.default.*" }
+                foreach ($profile in $profiles) {
+                    $cachePath = "$profile\cache2"
+                    if (Test-Path $cachePath) {
+                        Remove-Item -Path "$cachePath\*" -Recurse -Force -ErrorAction SilentlyContinue
+                        Write-Host "Firefox cache cleared: $cachePath" -ForegroundColor Green
+                    }
+                }
+            }
+        }
+        Write-Host "Firefox cache cleared successfully" -ForegroundColor Green
+    } catch {
+        Write-Host "Error clearing Firefox cache: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Clear Edge cache
+function Clear-EdgeCache {
+    try {
+        $edgePaths = @(
+            "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default\Cache",
+            "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default\Code Cache"
+        )
+        
+        foreach ($path in $edgePaths) {
+            if (Test-Path $path) {
+                Remove-Item -Path "$path\*" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "Edge cache cleared: $path" -ForegroundColor Green
+            }
+        }
+        Write-Host "Edge cache cleared successfully" -ForegroundColor Green
+    } catch {
+        Write-Host "Error clearing Edge cache: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Clear Brave cache
+function Clear-BraveCache {
+    try {
+        $bravePaths = @(
+            "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\Default\Cache",
+            "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\Default\Code Cache"
+        )
+        
+        foreach ($path in $bravePaths) {
+            if (Test-Path $path) {
+                Remove-Item -Path "$path\*" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "Brave cache cleared: $path" -ForegroundColor Green
+            }
+        }
+        Write-Host "Brave cache cleared successfully" -ForegroundColor Green
+    } catch {
+        Write-Host "Error clearing Brave cache: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Clear Opera cache
+function Clear-OperaCache {
+    try {
+        $operaPaths = @(
+            "$env:LOCALAPPDATA\Opera Software\Opera Stable\Cache",
+            "$env:LOCALAPPDATA\Opera Software\Opera Stable\Code Cache"
+        )
+        
+        foreach ($path in $operaPaths) {
+            if (Test-Path $path) {
+                Remove-Item -Path "$path\*" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "Opera cache cleared: $path" -ForegroundColor Green
+            }
+        }
+        Write-Host "Opera cache cleared successfully" -ForegroundColor Green
+    } catch {
+        Write-Host "Error clearing Opera cache: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Clear all browser caches
+function Clear-AllBrowserCache {
+    try {
+        Write-Host "Clearing all browser caches..." -ForegroundColor Yellow
+        Clear-ChromeCache
+        Clear-FirefoxCache
+        Clear-EdgeCache
+        Clear-BraveCache
+        Clear-OperaCache
+        Write-Host "All browser caches cleared successfully" -ForegroundColor Green
+    } catch {
+        Write-Host "Error clearing all browser caches: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
 # Enable DNS over HTTPS
 function Enable-DoH {
     try {
@@ -263,6 +415,8 @@ function Edit-HostsFile {
                 try {
                     Add-Content $hostsPath "`n$ip`t$domain"
                     Write-Host "Entry added successfully" -ForegroundColor Green
+                    Write-Host "`n⚠️  IMPORTANT: Restart your browser or clear browser cache for changes to take effect!" -ForegroundColor Yellow
+                    Write-Host "   Use Option 7 (Clear Browser Cache) to automatically clear cache" -ForegroundColor Cyan
                 } catch {
                     Write-Host "Error adding entry: $($_.Exception.Message)" -ForegroundColor Red
                 }
@@ -370,18 +524,19 @@ function Show-Menu {
     Write-Host "4. Set OpenDNS (208.67.222.222) - Family Safe"
     Write-Host "5. Set Quad9 DNS (9.9.9.9) - Malware Protection"
     Write-Host "6. Flush DNS Cache"
+    Write-Host "7. Clear Browser Cache"
     Write-Host ""
     Write-Host "Advanced Features:"
-    Write-Host "7. Enable DNS over HTTPS (DoH)"
-    Write-Host "8. Disable DNS over HTTPS (DoH)"
-    Write-Host "9. Optimize network settings"
-    Write-Host "10. Reset network optimizations"
-    Write-Host "11. Manage hosts file"
-    Write-Host "12. Run network diagnostics"
+    Write-Host "8. Enable DNS over HTTPS (DoH)"
+    Write-Host "9. Disable DNS over HTTPS (DoH)"
+    Write-Host "10. Optimize network settings"
+    Write-Host "11. Reset network optimizations"
+    Write-Host "12. Manage hosts file"
+    Write-Host "13. Run network diagnostics"
     Write-Host ""
     Write-Host "System:"
-    Write-Host "13. Reset to ISP default"
-    Write-Host "14. Toggle persistent mode (Current: $($global:PersistentMode))"
+    Write-Host "14. Reset to ISP default"
+    Write-Host "15. Toggle persistent mode (Current: $($global:PersistentMode))"
     Write-Host "0. Exit"
     Write-Host ""
 }
@@ -434,35 +589,38 @@ do {
             Read-Host "`nPress Enter to continue"
         }
         "7" {
+            Clear-BrowserCache
+        }
+        "8" {
             Enable-DoH
             Read-Host "`nPress Enter to continue"
         }
-        "8" {
+        "9" {
             Disable-DoH
             Read-Host "`nPress Enter to continue"
         }
-        "9" {
+        "10" {
             Optimize-NetworkSettings
             Read-Host "`nPress Enter to continue"
         }
-        "10" {
+        "11" {
             Reset-NetworkOptimizations
             Read-Host "`nPress Enter to continue"
         }
-        "11" {
+        "12" {
             Edit-HostsFile
         }
-        "12" {
+        "13" {
             Test-NetworkDiagnostics
             Read-Host "`nPress Enter to continue"
         }
-        "13" {
+        "14" {
             Reset-DNS
             Disable-DoH
             Clear-PersistentSettings
             Read-Host "`nPress Enter to continue"
         }
-        "14" {
+        "15" {
             $global:PersistentMode = -not $global:PersistentMode
             Write-Host "Persistent mode: $($global:PersistentMode)" -ForegroundColor Yellow
             if (-not $global:PersistentMode) {
